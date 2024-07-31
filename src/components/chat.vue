@@ -23,7 +23,7 @@
         <v-select
           v-model="modelStore.selectedModel"
           :items="modelStore.models"
-          item-title="id"
+          item-title="model"
           return-object
           label="Select Model"
           variant="outlined"
@@ -51,9 +51,6 @@
         ></v-textarea>
       </v-col>
       <v-col>
-        <span class="small-text">Processing Time: {{processingTime}}</span>
-      </v-col>
-      <v-col>
         <v-btn variant="flat" color="primary" block @click="sendChat">Send</v-btn>
       </v-col>
     </v-row>
@@ -61,34 +58,78 @@
       <v-col>
         <v-card variant="flat" style="max-width: 700px">
           <v-card-title>Model Answer</v-card-title>
-            <v-card-text v-html="modelAnswerHtml"></v-card-text>
+          <v-card-text v-html="modelAnswerHtml"></v-card-text>
         </v-card>
+      </v-col>
+      <v-col v-if="finalResponseStatistics">
+        <v-table density="compact">
+          <thead>
+          <tr>
+            <th colspan="2">Response Statistics</th>
+          </tr>
+          </thead>
+          <tbody>
+          <tr>
+            <td>Evaluation Duration</td>
+            <td>{{ (finalResponseStatistics.eval_duration / 1e9).toFixed(3) }} seconds</td>
+          </tr>
+          <tr>
+            <td>Load Duration</td>
+            <td>{{ (finalResponseStatistics.load_duration / 1e9).toFixed(3) }} seconds</td>
+          </tr>
+          <tr>
+            <td>Prompt Evaluation Duration</td>
+            <td>{{ (finalResponseStatistics.prompt_eval_duration / 1e9).toFixed(3) }} seconds</td>
+          </tr>
+          <tr>
+            <td>Prompt Tokens per Second</td>
+            <td>{{ promptTokensPerSecond }} T/s</td>
+          </tr>
+          <tr>
+            <td>Total Duration</td>
+            <td>{{ (finalResponseStatistics.total_duration / 1e9).toFixed(3) }} seconds</td>
+          </tr>
+          <tr>
+            <td>Inference Tokens per Second</td>
+            <td>{{ inferenceTokensPerSecond }} T/s</td>
+          </tr>
+          </tbody>
+        </v-table>
       </v-col>
     </v-row>
   </v-container>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import OpenAI from 'openai';
+import { ref, onMounted, computed } from 'vue';
 import { marked } from 'marked';
 import { useModelStore } from '../stores/models';
+import ollama from 'ollama/browser'; // Importing Ollama for browser
 
 const modelStore = useModelStore();
 onMounted(() => {
   modelStore.fetchModels();
 });
 
-const systemPrompt = ref("You are a helpful chatbot.");
+const systemPrompt = ref("You are a helpful chatbot. For testing purposes keep your answer very brief and concise. It must not be longer than three sentences.");
 const userMessage = ref("Why is the sky blue?");
 const modelAnswer = ref("");
 const modelAnswerHtml = ref("");
 const temperature = ref(0.7);
+const finalResponseStatistics = ref(null);
 
-const openai = new OpenAI({
-  apiKey: 'sk-xxx', // Dummy API key
-  baseURL: 'http://localhost:11434/v1', // Ollama API endpoint
-  dangerouslyAllowBrowser: true
+const promptTokensPerSecond = computed(() => {
+  if (finalResponseStatistics.value && finalResponseStatistics.value.prompt_eval_count) {
+    return (finalResponseStatistics.value.prompt_eval_count / (finalResponseStatistics.value.prompt_eval_duration / 1e9)).toFixed(2);
+  }
+  return "N/A";
+});
+
+const inferenceTokensPerSecond = computed(() => {
+  if (finalResponseStatistics.value && finalResponseStatistics.value.eval_count) {
+    return (finalResponseStatistics.value.eval_count / (finalResponseStatistics.value.total_duration / 1e9)).toFixed(2);
+  }
+  return "N/A";
 });
 
 async function handleFileUpload(file) {
@@ -116,22 +157,32 @@ async function handleFileUpload(file) {
 async function sendChat() {
   modelAnswer.value = "";
   modelAnswerHtml.value = "";
+  finalResponseStatistics.value = null;
 
   try {
-    const stream = await openai.chat.completions.create({
+    const message = { role: 'user', content: userMessage.value };
+    const response = await ollama.chat({
+      model: modelStore.selectedModel.model,
       messages: [
         { role: "system", content: systemPrompt.value },
-        { role: "user", content: userMessage.value }
+        message
       ],
-      model: modelStore.selectedModel.id,
       temperature: temperature.value,
       stream: true
     });
 
-    for await (const part of stream) {
-      const message = part.choices[0]?.delta?.content || "";
-      modelAnswer.value += message;
-      modelAnswerHtml.value = marked(modelAnswer.value);
+    let finalResponse;
+    for await (const part of response) {
+        const messageContent = part.message.content;
+        modelAnswer.value += messageContent;
+        modelAnswerHtml.value = marked(modelAnswer.value);
+        finalResponse = part; // Keep updating finalResponse with the latest part
+    }
+
+    // Log the statistics from the final response
+    if (finalResponse) {
+        console.log('Final response statistics:', finalResponse);
+        finalResponseStatistics.value = finalResponse; // Store the statistics
     }
   } catch (error) {
     console.error('Error in chat completion:', error);

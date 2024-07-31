@@ -1,16 +1,11 @@
 import { defineStore } from 'pinia';
-import OpenAI from 'openai';
-import type {Model} from "@/types/generic";
+import ollama from 'ollama/browser';
+import {type ModelResponse} from "ollama/browser";
 
-const openai = new OpenAI({
-    apiKey: 'sk-xxx',
-    baseURL: 'http://localhost:11434/v1',
-    dangerouslyAllowBrowser: true
-});
 
 interface ModelStoreState {
-    models: Model[],
-    selectedModel: Model | null,
+    models: ModelResponse[],
+    selectedModel: ModelResponse | null,
     loading: boolean,
     error: boolean
 }
@@ -31,11 +26,12 @@ export const useModelStore = defineStore({
             this.loading = true;
             this.error = false;
             try {
-                const response = await openai.models.list();
-                this.models = response.data;
-                this.selectedModel = this.models[0]
+                const response = await ollama.list();
+                this.models = response.models.sort((a, b) => a.size - b.size);
+                this.selectedModel = this.models[0];
             } catch (err: any) {
-                this.error = err.message || 'Failed to fetch models';
+                console.log(err.message || 'Failed to fetch models');
+                this.error = true;
             } finally {
                 this.loading = false;
             }
