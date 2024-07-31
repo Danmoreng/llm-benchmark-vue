@@ -40,7 +40,7 @@ import { ref } from 'vue';
 
 const items = ref([
   { title: 'Home', route: '/' },
-  { title: 'About', route: '/about' }
+  { title: 'Models', route: '/models' }
 ]);
 </script>
 

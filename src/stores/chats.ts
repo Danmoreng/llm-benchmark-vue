@@ -138,7 +138,7 @@ export const useChatStore = defineStore('chat', {
         getInferenceTokensPerSecond(conversationId: string): string {
             const conversation = this.conversations[conversationId];
             if (conversation && conversation.finalResponseStatistics && conversation.finalResponseStatistics.eval_count) {
-                return (conversation.finalResponseStatistics.eval_count / (conversation.finalResponseStatistics.total_duration / 1e9)).toFixed(2);
+                return (conversation.finalResponseStatistics.eval_count / (conversation.finalResponseStatistics.eval_duration / 1e9)).toFixed(2);
             }
             return "N/A";
         },

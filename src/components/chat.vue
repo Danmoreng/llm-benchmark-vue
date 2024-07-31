@@ -3,51 +3,67 @@
     <v-row>
       <v-col>
         <v-textarea
-          label="System Prompt"
-          v-model="systemPrompt"
-          variant="outlined"
-          density="compact"
+            label="System Prompt"
+            v-model="systemPrompt"
+            variant="outlined"
+            density="compact"
         ></v-textarea>
       </v-col>
       <v-col>
         <v-file-input
-          label="Upload PDF"
-          ref="pdfInput"
-          accept="application/pdf"
-          @change="handleFileUpload"
+            variant="solo-inverted"
+            label="Upload PDF"
+            ref="pdfInput"
+            accept="application/pdf"
+            @change="handleFileUpload"
         ></v-file-input>
       </v-col>
     </v-row>
     <v-row>
-      <v-col>
+      <v-col cols="6">
         <v-select
-          v-model="modelStore.selectedModel"
-          :items="modelStore.models"
-          item-title="model"
-          return-object
-          label="Select Model"
-          variant="outlined"
-          density="compact"
-        ></v-select>
+            v-model="modelStore.selectedModel"
+            :items="modelStore.models"
+            item-title="model"
+            return-object
+            label="Select Model"
+            variant="outlined"
+            density="compact"
+        >
+          <template v-slot:item="{ props, item }">
+            <v-list-item v-bind="props">
+              <v-list-item-subtitle>
+                {{ item.raw.details.parameter_size }} |
+                {{ (item.raw.size / (1024 * 1024 * 1024)).toFixed(2) }} GB
+              </v-list-item-subtitle>
+            </v-list-item>
+          </template>
+        </v-select>
       </v-col>
-      <v-col>
+
+
+      <v-col cols="4">
         <v-slider
-          v-model="temperature"
-          label="Temperature"
-          min="0"
-          max="1"
-          step="0.01"
-          thumb-label
+            v-model="temperature"
+            label="Temperature"
+            min="0"
+            max="1"
+            step="0.01"
+            thumb-label
         ></v-slider>
+      </v-col>
+      <v-col cols="2">
+        <v-text-field variant="outlined" v-model="temperature" density="compact" type="number" step="0.01" min="0"
+                      max="1"></v-text-field>
       </v-col>
     </v-row>
     <v-row>
       <v-col>
         <v-textarea
-          label="User Input"
-          v-model="userMessage"
-          variant="outlined"
-          density="compact"
+            label="User Input"
+            v-model="userMessage"
+            variant="outlined"
+            density="compact"
         ></v-textarea>
       </v-col>
       <v-col>
@@ -101,9 +117,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import { marked } from 'marked';
-import { useModelStore } from '../stores/models';
+import {ref, onMounted, computed} from 'vue';
+import {marked} from 'marked';
+import {useModelStore} from '../stores/models';
 import ollama from 'ollama/browser'; // Importing Ollama for browser
 
 const modelStore = useModelStore();
@@ -127,7 +143,7 @@ const promptTokensPerSecond = computed(() => {
 
 const inferenceTokensPerSecond = computed(() => {
   if (finalResponseStatistics.value && finalResponseStatistics.value.eval_count) {
-    return (finalResponseStatistics.value.eval_count / (finalResponseStatistics.value.total_duration / 1e9)).toFixed(2);
+    return (finalResponseStatistics.value.eval_count / (finalResponseStatistics.value.eval_duration / 1e9)).toFixed(2);
   }
   return "N/A";
 });
@@ -160,11 +176,11 @@ async function sendChat() {
   finalResponseStatistics.value = null;
 
   try {
-    const message = { role: 'user', content: userMessage.value };
+    const message = {role: 'user', content: userMessage.value};
     const response = await ollama.chat({
       model: modelStore.selectedModel.model,
       messages: [
-        { role: "system", content: systemPrompt.value },
+        {role: "system", content: systemPrompt.value},
         message
       ],
       temperature: temperature.value,
@@ -173,16 +189,16 @@ async function sendChat() {
 
     let finalResponse;
     for await (const part of response) {
-        const messageContent = part.message.content;
-        modelAnswer.value += messageContent;
-        modelAnswerHtml.value = marked(modelAnswer.value);
-        finalResponse = part; // Keep updating finalResponse with the latest part
+      const messageContent = part.message.content;
+      modelAnswer.value += messageContent;
+      modelAnswerHtml.value = marked(modelAnswer.value);
+      finalResponse = part; // Keep updating finalResponse with the latest part
     }
 
     // Log the statistics from the final response
     if (finalResponse) {
-        console.log('Final response statistics:', finalResponse);
-        finalResponseStatistics.value = finalResponse; // Store the statistics
+      console.log('Final response statistics:', finalResponse);
+      finalResponseStatistics.value = finalResponse; // Store the statistics
     }
   } catch (error) {
     console.error('Error in chat completion:', error);

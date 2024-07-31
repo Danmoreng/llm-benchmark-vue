@@ -1,13 +1,14 @@
-import { defineStore } from 'pinia';
+import {defineStore} from 'pinia';
 import ollama from 'ollama/browser';
-import {type ModelResponse} from "ollama/browser";
+import type {ModelResponse, PullRequest, DeleteRequest} from "ollama/browser";
 
 
 interface ModelStoreState {
     models: ModelResponse[],
     selectedModel: ModelResponse | null,
     loading: boolean,
-    error: boolean
+    error: boolean,
+    pullStatus: any
 }
 
 export const useModelStore = defineStore({
@@ -16,10 +17,11 @@ export const useModelStore = defineStore({
         models: [],
         selectedModel: null,
         loading: false,
-        error: false
+        error: false,
+        pullStatus: null
     }),
     getters: {
-        modelCount: (state) => state.models.length
+        modelCount: (state) => state.models.length,
     },
     actions: {
         async fetchModels() {
@@ -35,6 +37,43 @@ export const useModelStore = defineStore({
             } finally {
                 this.loading = false;
             }
-        }
-    }
+        },
+        async pullModel(modelName: string) {
+            this.loading = true;
+            this.error = false;
+            try {
+                const request: PullRequest = {
+                    model: modelName,
+                    stream: true
+                }
+                const response = await ollama.pull(request as any);
+
+                for await (const part of response) {
+                    this.pullStatus = part;
+                }
+                await this.fetchModels();
+            } catch (err: any) {
+                console.log(err.message || 'Failed to pull model');
+                this.error = true;
+            } finally {
+                this.loading = false;
+            }
+        },
+        async deleteModel(modelName: string) {
+            this.loading = true;
+            this.error = false;
+            try {
+                const request: DeleteRequest = {
+                    model: modelName
+                }
+                await ollama.delete(request);
+                await this.fetchModels();
+            } catch (err: any) {
+                console.log(err.message || 'Failed to delete model');
+                this.error = true;
+            } finally {
+                this.loading = false;
+            }
+        },
+    },
 });
