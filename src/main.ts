@@ -12,7 +12,7 @@ const customTheme: ThemeDefinition = {
     dark: false,
     colors: {
         background: '#272727',
-        surface: '#222222',
+        surface: '#131313',
         primary: '#0b8b0e',
         secondary: '#085f57',
         error: '#B00020',
