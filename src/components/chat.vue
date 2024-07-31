@@ -1,142 +1,155 @@
 <template>
-  <main>
-    <p class="small-text">ChatId: {{chatId}}</p>
-    <div class="textarea-container">
-      <label for="systemPrompt">System Prompt:</label>
-      <textarea id="systemPrompt" v-model="systemPrompt"></textarea>
-    </div>
-    <div class="textarea-container">
-      <label for="pdfUpload">Upload PDF:</label>
-      <input type="file" ref="pdfInput" accept="application/pdf">
-    </div>
-    <div class="textarea-container">
-      <label for="userMessage">User Input:</label>
-      <textarea id="userMessage" v-model="userMessage"></textarea>
-    </div>
-    <button @click="sendChat">Send</button>
-    <br>
-    <br>
-    <label>Model Output:</label>
-    <p class="small-text">Processing time: {{processingTime}}</p>
-    <div class="model-answer" v-html="modelAnswerHtml"></div>
-  </main>
+  <v-container>
+    <v-row>
+      <v-col>
+        <v-textarea
+          label="System Prompt"
+          v-model="systemPrompt"
+          variant="outlined"
+          density="compact"
+        ></v-textarea>
+      </v-col>
+      <v-col>
+        <v-file-input
+          label="Upload PDF"
+          ref="pdfInput"
+          accept="application/pdf"
+          @change="handleFileUpload"
+        ></v-file-input>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col>
+        <v-select
+          v-model="modelStore.selectedModel"
+          :items="modelStore.models"
+          item-title="id"
+          return-object
+          label="Select Model"
+          variant="outlined"
+          density="compact"
+        ></v-select>
+      </v-col>
+      <v-col>
+        <v-slider
+          v-model="temperature"
+          label="Temperature"
+          min="0"
+          max="1"
+          step="0.01"
+          thumb-label
+        ></v-slider>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col>
+        <v-textarea
+          label="User Input"
+          v-model="userMessage"
+          variant="outlined"
+          density="compact"
+        ></v-textarea>
+      </v-col>
+      <v-col>
+        <span class="small-text">Processing Time: {{processingTime}}</span>
+      </v-col>
+      <v-col>
+        <v-btn variant="flat" color="primary" block @click="sendChat">Send</v-btn>
+      </v-col>
+    </v-row>
+    <v-row>
+      <v-col>
+        <v-card variant="flat" style="max-width: 700px">
+          <v-card-title>Model Answer</v-card-title>
+            <v-card-text v-html="modelAnswerHtml"></v-card-text>
+        </v-card>
+      </v-col>
+    </v-row>
+  </v-container>
 </template>
 
 <script setup>
-import {ref} from 'vue';
-import {marked} from "marked";
+import { ref, onMounted } from 'vue';
+import OpenAI from 'openai';
+import { marked } from 'marked';
+import { useModelStore } from '../stores/models';
 
+const modelStore = useModelStore();
+onMounted(() => {
+  modelStore.fetchModels();
+});
 
-const systemPrompt = ref("You are a helpful chatbot. Your task is, to extract information from a document based on a JSON schema the user provides. You will answer only in JSON and respond with the exact schema the user provided. If you cannot find information matching the criteria, the data in your output JSON is null.");
-const userMessage = ref("{\n" +
-    "  \"account_holder\": \"string\",\n" +
-    "  \"bank_name\": \"string\",\n" +
-    "  \"fees_paid\": \"number\",\n" +
-    "  \"interest_paid\": \"number\",\n" +
-    "  \"interest_received\": \"number\",\n" +
-    "  \"account_number\": \"string\",\n" +
-    "  \"iban\": \"string\",\n" +
-    "  \"start_date\": \"date\",\n" +
-    "  \"end_date\": \"date\"\n" +
-    "}");
+const systemPrompt = ref("You are a helpful chatbot.");
+const userMessage = ref("Why is the sky blue?");
 const modelAnswer = ref("");
 const modelAnswerHtml = ref("");
-const pdfInput = ref(null);
-const processingTime = ref(0);
-const chatId = ref(null);
+const temperature = ref(0.7);
+
+const openai = new OpenAI({
+  apiKey: 'sk-xxx', // Dummy API key
+  baseURL: 'http://localhost:11434/v1', // Ollama API endpoint
+  dangerouslyAllowBrowser: true
+});
+
+async function handleFileUpload(file) {
+  if (file && file.type === "application/pdf") {
+    const arrayBuffer = await file.arrayBuffer();
+    try {
+      // Note: PDF extraction logic is commented out as it requires additional setup
+      // You may need to add PDF.js or a similar library to handle PDF extraction
+      // const pdfDoc = await getDocument(new Uint8Array(arrayBuffer)).promise;
+      // let finalText = '';
+      // for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+      //   const page = await pdfDoc.getPage(pageNum);
+      //   const textContent = await page.getTextContent();
+      //   const pageText = textContent.items.map(item => item.str).join(' ');
+      //   finalText += pageText + '\n\n';
+      // }
+      // systemPrompt.value += `\n\nExtracted PDF Text:\n${finalText}`;
+      console.log("PDF uploaded successfully");
+    } catch (error) {
+      console.error('Error reading PDF: ', error);
+    }
+  }
+}
 
 async function sendChat() {
   modelAnswer.value = "";
-  const formData = new FormData();
-  formData.append("systemPrompt", systemPrompt.value);
-  formData.append("message", userMessage.value);
-  if(chatId.value !== null){
-    formData.append("chatId", chatId);
-  }
-  const selectedFile = pdfInput.value.files[0];
-  if(selectedFile && selectedFile.type === 'application/pdf'){
-    formData.append("pdf", selectedFile);
-  }
+  modelAnswerHtml.value = "";
 
-  const response = await fetch('/api/chat', {
-    method: 'POST',
-    body: formData
-  });
+  try {
+    const stream = await openai.chat.completions.create({
+      messages: [
+        { role: "system", content: systemPrompt.value },
+        { role: "user", content: userMessage.value }
+      ],
+      model: modelStore.selectedModel.id,
+      temperature: temperature.value,
+      stream: true
+    });
 
-  if (response.ok) {
-    const json = await response.json();
-    modelAnswer.value = json.message.content;
-    modelAnswerHtml.value = marked.parse(modelAnswer.value);
-    processingTime.value = json.processingTime;
-    chatId.value = json.chatId;
-  } else {
-    console.error('Error:', response.statusText);
+    for await (const part of stream) {
+      const message = part.choices[0]?.delta?.content || "";
+      modelAnswer.value += message;
+      modelAnswerHtml.value = marked(modelAnswer.value);
+    }
+  } catch (error) {
+    console.error('Error in chat completion:', error);
+    modelAnswer.value = "An error occurred while processing your request.";
+    modelAnswerHtml.value = marked(modelAnswer.value);
   }
 }
-
 </script>
 
 <style>
-html, body {
-  font-family: Segoe UI, sans-serif;
-  background-color: #f3f3f3;
-  margin: 0;
-  padding: 0;
-}
-
-main {
-  max-width: 900px;
-  margin: 2rem auto;
+pre {
+  background: #3e3e3e;
   padding: 1rem;
-  background-color: white;
-  border-radius: 10px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-}
-
-.textarea-container {
-  margin-bottom: 1rem;
-}
-
-textarea {
-  width: 100%;
-  height: 100px;
-  padding: 0.5rem;
-  margin-top: 0.5rem;
-  border: 1px solid #ccc;
   border-radius: 4px;
-  box-sizing: border-box;
+  margin: 10px 0 20px 0;
 }
 
-input[type="file"] {
-  display: block;
-  margin-top: 0.5rem;
-}
-
-button {
-  width: 100%;
-  padding: 0.75rem;
-  background-color: #4CAF50;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-button:hover {
-  background-color: #45a049;
-}
-
-.model-answer {
-  margin: 1rem 0;
-  padding: 1rem;
-  background-color: #f9f9f9;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  white-space: pre-wrap; /* Ensure that line breaks are preserved */
-}
-
-.small-text {
-  font-size: 0.8rem;
-  line-height: 0.5rem;
+code {
+  font-family: 'Courier New', Courier, monospace;
 }
 </style>
