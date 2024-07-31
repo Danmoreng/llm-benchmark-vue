@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import OpenAI from 'openai';
+import type {Model} from "@/types/generic";
 
 const openai = new OpenAI({
     apiKey: 'sk-xxx',
@@ -7,13 +8,20 @@ const openai = new OpenAI({
     dangerouslyAllowBrowser: true
 });
 
+interface ModelStoreState {
+    models: Model[],
+    selectedModel: Model | null,
+    loading: boolean,
+    error: boolean
+}
+
 export const useModelStore = defineStore({
     id: 'model',
-    state: () => ({
+    state: (): ModelStoreState => ({
         models: [],
         selectedModel: null,
         loading: false,
-        error: null
+        error: false
     }),
     getters: {
         modelCount: (state) => state.models.length
@@ -21,12 +29,12 @@ export const useModelStore = defineStore({
     actions: {
         async fetchModels() {
             this.loading = true;
-            this.error = null;
+            this.error = false;
             try {
                 const response = await openai.models.list();
                 this.models = response.data;
                 this.selectedModel = this.models[0]
-            } catch (err) {
+            } catch (err: any) {
                 this.error = err.message || 'Failed to fetch models';
             } finally {
                 this.loading = false;

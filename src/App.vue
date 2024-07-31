@@ -1,23 +1,32 @@
 <template>
   <v-app>
     <v-layout class="rounded rounded-md">
-      <v-app-bar elevation="0" border>
-        <v-toolbar-title>Application bar</v-toolbar-title>
-      </v-app-bar>
+      <v-app-bar
+          class="px-3"
+          density="compact"
+          title="LLM Benchmark"
+          flat
+      >
+        <v-tabs
+            color="primary"
+            centered
+        >
+          <v-tab
+              v-for="item in items"
+              :key="item.title"
+              :to="item.route"
+              :text="item.title"
+              router
+              link
+          ></v-tab>
+        </v-tabs>
+        <v-spacer></v-spacer>
 
-      <v-navigation-drawer app>
-        <v-list>
-          <v-list-item
-            v-for="item in items"
-            :key="item.title"
-            :to="item.route"
-            router
-            link
-          >
-            <v-list-item-title>{{ item.title }}</v-list-item-title>
-          </v-list-item>
-        </v-list>
-      </v-navigation-drawer>
+        <v-avatar
+            color="grey-darken-1"
+            size="32"
+        ></v-avatar>
+      </v-app-bar>
 
       <v-main>
         <RouterView />
