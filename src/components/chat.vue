@@ -69,15 +69,28 @@
       <v-col>
         <v-btn variant="flat" color="primary" block @click="sendChat">Send</v-btn>
       </v-col>
+      <v-col>
+        <v-btn variant="flat" color="info" block @click="editMode = !editMode">Toggle Edit Mode</v-btn>
+      </v-col>
     </v-row>
     <v-row>
-      <v-col>
-        <v-card variant="flat" style="max-width: 700px">
-          <v-card-title>Model Answer</v-card-title>
-          <v-card-text v-html="modelAnswerHtml"></v-card-text>
+    <v-col v-if="chatId !== ''" style="max-width: 900px">
+        <v-card
+            v-for="(message, index) in chatsStore.conversations[chatId].messages"
+            :key="index"
+            :class="'role-' + message.role + ' mb-3'"
+            variant="outlined"
+        >
+          <v-card-text v-if="!editMode">
+            <div v-html="marked(message.content)"></div>
+          </v-card-text>
+          <v-card-text v-else>
+            <v-textarea v-model="message.content" variant="outlined" auto-grow
+                        density="compact" hide-details=true></v-textarea>
+          </v-card-text>
         </v-card>
-      </v-col>
-      <v-col v-if="finalResponseStatistics">
+    </v-col>
+      <v-col v-if="chatId !== '' && chatsStore.conversations[chatId].statistics !== null">
         <v-table density="compact">
           <thead>
           <tr>
@@ -87,27 +100,27 @@
           <tbody>
           <tr>
             <td>Evaluation Duration</td>
-            <td>{{ (finalResponseStatistics.eval_duration / 1e9).toFixed(3) }} seconds</td>
+            <td>{{ (chatsStore.conversations[chatId].statistics.eval_duration / 1e9).toFixed(3) }} seconds</td>
           </tr>
           <tr>
             <td>Load Duration</td>
-            <td>{{ (finalResponseStatistics.load_duration / 1e9).toFixed(3) }} seconds</td>
+            <td>{{ (chatsStore.conversations[chatId].statistics.load_duration / 1e9).toFixed(3) }} seconds</td>
           </tr>
           <tr>
             <td>Prompt Evaluation Duration</td>
-            <td>{{ (finalResponseStatistics.prompt_eval_duration / 1e9).toFixed(3) }} seconds</td>
+            <td>{{ (chatsStore.conversations[chatId].statistics.prompt_eval_duration / 1e9).toFixed(3) }} seconds</td>
           </tr>
           <tr>
             <td>Prompt Tokens per Second</td>
-            <td>{{ promptTokensPerSecond }} T/s</td>
+            <td>{{ chatsStore.getPromptTokensPerSecond(chatId) }} T/s</td>
           </tr>
           <tr>
             <td>Total Duration</td>
-            <td>{{ (finalResponseStatistics.total_duration / 1e9).toFixed(3) }} seconds</td>
+            <td>{{ (chatsStore.conversations[chatId].statistics.total_duration / 1e9).toFixed(3) }} seconds</td>
           </tr>
           <tr>
             <td>Inference Tokens per Second</td>
-            <td>{{ inferenceTokensPerSecond }} T/s</td>
+            <td>{{ chatsStore.getInferenceTokensPerSecond(chatId) }} T/s</td>
           </tr>
           </tbody>
         </v-table>
@@ -120,33 +133,19 @@
 import {ref, onMounted, computed} from 'vue';
 import {marked} from 'marked';
 import {useModelStore} from '../stores/models';
-import ollama from 'ollama/browser'; // Importing Ollama for browser
+import {useChatStore} from "../stores/chats";
 
 const modelStore = useModelStore();
+const chatsStore = useChatStore();
+const chatId = ref("");
+const editMode = ref(false);
 onMounted(() => {
   modelStore.fetchModels();
 });
 
 const systemPrompt = ref("You are a helpful chatbot. For testing purposes keep your answer very brief and concise. It must not be longer than three sentences.");
 const userMessage = ref("Why is the sky blue?");
-const modelAnswer = ref("");
-const modelAnswerHtml = ref("");
 const temperature = ref(0.7);
-const finalResponseStatistics = ref(null);
-
-const promptTokensPerSecond = computed(() => {
-  if (finalResponseStatistics.value && finalResponseStatistics.value.prompt_eval_count) {
-    return (finalResponseStatistics.value.prompt_eval_count / (finalResponseStatistics.value.prompt_eval_duration / 1e9)).toFixed(2);
-  }
-  return "N/A";
-});
-
-const inferenceTokensPerSecond = computed(() => {
-  if (finalResponseStatistics.value && finalResponseStatistics.value.eval_count) {
-    return (finalResponseStatistics.value.eval_count / (finalResponseStatistics.value.eval_duration / 1e9)).toFixed(2);
-  }
-  return "N/A";
-});
 
 async function handleFileUpload(file) {
   if (file && file.type === "application/pdf") {
@@ -171,40 +170,15 @@ async function handleFileUpload(file) {
 }
 
 async function sendChat() {
-  modelAnswer.value = "";
-  modelAnswerHtml.value = "";
-  finalResponseStatistics.value = null;
-
-  try {
-    const message = {role: 'user', content: userMessage.value};
-    const response = await ollama.chat({
-      model: modelStore.selectedModel.model,
-      messages: [
-        {role: "system", content: systemPrompt.value},
-        message
-      ],
-      temperature: temperature.value,
-      stream: true
-    });
-
-    let finalResponse;
-    for await (const part of response) {
-      const messageContent = part.message.content;
-      modelAnswer.value += messageContent;
-      modelAnswerHtml.value = marked(modelAnswer.value);
-      finalResponse = part; // Keep updating finalResponse with the latest part
-    }
-
-    // Log the statistics from the final response
-    if (finalResponse) {
-      console.log('Final response statistics:', finalResponse);
-      finalResponseStatistics.value = finalResponse; // Store the statistics
-    }
-  } catch (error) {
-    console.error('Error in chat completion:', error);
-    modelAnswer.value = "An error occurred while processing your request.";
-    modelAnswerHtml.value = marked(modelAnswer.value);
+  console.log('clicked');
+  console.log(chatsStore.conversations);
+  if(chatId.value === ""){
+    console.log('create chat');
+    chatId.value = chatsStore.createConversation(modelStore.selectedModel.model, systemPrompt.value);
+    console.log('chat id: ', chatId.value);
   }
+  console.log('generating response');
+  await chatsStore.sendMessage(chatId.value, userMessage.value);
 }
 </script>
 
@@ -218,5 +192,19 @@ pre {
 
 code {
   font-family: 'Courier New', Courier, monospace;
+}
+
+.role-system {
+  background: #9e7300;
+}
+
+.role-assistant {
+  background: #271524;
+  margin-right: 50px;
+}
+
+.role-user {
+  background: #12141e;
+  margin-left: 50px;
 }
 </style>

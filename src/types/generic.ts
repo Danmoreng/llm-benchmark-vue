@@ -18,11 +18,8 @@ export interface Conversation {
     id: string;
     modelName: string;
     messages: Message[];
-    systemPrompt: string;
     temperature: number;
-    modelAnswer: string;
-    modelAnswerHtml: string;
-    finalResponseStatistics: ResponseStatistics | null;
+    statistics: ResponseStatistics | null;
 }
 
 export interface ChatResponse {
