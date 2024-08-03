@@ -22,6 +22,7 @@ export const useChatStore = defineStore('chat', {
             this.conversations[id] = {
                 id,
                 modelName,
+                systemPrompt,
                 messages: [{ role: "system", content: systemPrompt }],
                 temperature: 0.7,
                 statistics: null,
@@ -31,6 +32,10 @@ export const useChatStore = defineStore('chat', {
 
         removeConversation(id: string): void {
             delete this.conversations[id];
+        },
+
+        resetChat(id: string): void {
+          this.conversations[id].messages = [{ role: "system", content: this.conversations[id].systemPrompt }];
         },
 
         async sendMessage(conversationId: string, message: string): Promise<void> {

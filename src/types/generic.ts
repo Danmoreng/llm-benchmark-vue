@@ -17,20 +17,8 @@ export interface ResponseStatistics {
 export interface Conversation {
     id: string;
     modelName: string;
+    systemPrompt: string;
     messages: Message[];
     temperature: number;
     statistics: ResponseStatistics | null;
-}
-
-export interface ChatResponse {
-    model: string;
-    created_at: string;
-    message: Message;
-    done: boolean;
-    total_duration?: number;
-    load_duration?: number;
-    prompt_eval_count?: number;
-    prompt_eval_duration?: number;
-    eval_count?: number;
-    eval_duration?: number;
 }
