@@ -45,10 +45,15 @@ function openChatModal() {
 
 async function sendChat() {
   if (userMessage.value.trim() !== "") {
-    for (const chatId of Object.keys(chatsStore.chats)) {
-      await chatsStore.sendMessage(chatId, userMessage.value);
-    }
-    userMessage.value = ""; // Clear the input after sending the message
+    const message = userMessage.value;
+    userMessage.value = ""; // Clear the input immediately
+
+    const promises = Object.keys(chatsStore.chats).map(chatId =>
+        chatsStore.sendMessage(chatId, message)
+    );
+
+    await Promise.all(promises);
   }
 }
+
 </script>
