@@ -14,11 +14,15 @@ export interface ResponseStatistics {
     total_duration: number;
 }
 
-export interface Conversation {
+export interface ChatSettings {
+    systemPrompt: string,
+    model: string,
+    temperature: number,
+}
+
+export interface Chat {
     id: string;
-    modelName: string;
-    systemPrompt: string;
+    settings: ChatSettings;
     messages: Message[];
-    temperature: number;
     statistics: ResponseStatistics | null;
 }

@@ -1,64 +1,62 @@
 import { defineStore } from 'pinia';
 import ollama from 'ollama/browser';
-import type {Conversation} from "@/types/generic";
+import type {Chat, ChatSettings} from "@/types/generic";
 import type {ChatResponse} from "ollama";
 
 interface ChatState {
-    conversations: Record<string, Conversation>;
+    chats: Record<string, Chat>;
 }
 
 export const useChatStore = defineStore('chat', {
     state: (): ChatState => ({
-        conversations: {}
+        chats: {}
     }),
 
     getters: {
-        getConversationById: (state) => (id: string): Conversation | null => state.conversations[id] || null,
+        getchatById: (state) => (id: string): Chat | null => state.chats[id] || null,
     },
 
     actions: {
-        createConversation(modelName: string, systemPrompt: string): string {
+        createChat(settings: ChatSettings): string {
             const id = Date.now().toString();
-            this.conversations[id] = {
+            this.chats[id] = {
                 id,
-                modelName,
-                systemPrompt,
-                messages: [{ role: "system", content: systemPrompt }],
-                temperature: 0.7,
+                settings,
+                messages: [{ role: "system", content: settings.systemPrompt }],
                 statistics: null,
             };
             return id;
         },
 
-        removeConversation(id: string): void {
-            delete this.conversations[id];
+        removechat(id: string): void {
+            delete this.chats[id];
         },
 
         resetChat(id: string): void {
-          this.conversations[id].messages = [{ role: "system", content: this.conversations[id].systemPrompt }];
+          this.chats[id].messages = [{ role: "system", content: this.chats[id].settings.systemPrompt }];
         },
 
-        async sendMessage(conversationId: string, message: string): Promise<void> {
-            console.log('sendMessage', conversationId);
-            const conversation = this.conversations[conversationId];
-            console.log('from conversation', conversation);
-            if (!conversation) return;
+        async sendMessage(chatId: string, message: string): Promise<void> {
+            console.log('sendMessage', chatId);
+            const chat = this.chats[chatId];
+            console.log('from chat', chat);
+            if (!chat) return;
 
-            conversation.messages.push({role: 'user', content: message});
+            chat.messages.push({role: 'user', content: message});
             try {
                 const response = await (ollama.chat as any)({
-                    model: conversation.modelName,
-                    messages: conversation.messages,
-                    temperature: conversation.temperature,
+                    model: chat.settings.model,
+                    messages: chat.messages,
+                    temperature: chat.settings.temperature,
                     stream: true,
                 });
 
                 let finalResponse: ChatResponse | undefined;
-                conversation.messages.push({role: 'assistant', content: ""});
-                const index = conversation.messages.length - 1;
+                chat.messages.push({role: 'assistant', content: ""});
+                const index = chat.messages.length - 1;
                 for await (const part of response) {
                     const messageContent = part.message.content;
-                    conversation.messages[index].content += messageContent;
+                    chat.messages[index].content += messageContent;
                     if (part.done) {
                         finalResponse = part;
                     }
@@ -66,7 +64,7 @@ export const useChatStore = defineStore('chat', {
 
                 if (finalResponse) {
                     console.log('Final response statistics:', finalResponse);
-                    conversation.statistics = {
+                    chat.statistics = {
                         eval_count: finalResponse.eval_count || 0,
                         eval_duration: finalResponse.eval_duration || 0,
                         load_duration: finalResponse.load_duration || 0,
@@ -80,44 +78,37 @@ export const useChatStore = defineStore('chat', {
             }
         },
 
-        setSystemPrompt(conversationId: string, prompt: string): void {
-            const conversation = this.conversations[conversationId];
-            if (conversation) {
-                if(conversation.messages[0].role === 'system'){
-                    conversation.messages[0].content = prompt;
+        setSystemPrompt(chatId: string, prompt: string): void {
+            const chat = this.chats[chatId];
+            if (chat) {
+                if(chat.messages[0].role === 'system'){
+                    chat.messages[0].content = prompt;
                 } else {
-                    conversation.messages.unshift({ role: 'system', content: prompt });
+                    chat.messages.unshift({ role: 'system', content: prompt });
                 }
             }
         },
 
-        updateTemperature(conversationId: string, temp: number): void {
-            const conversation = this.conversations[conversationId];
-            if (conversation) {
-                conversation.temperature = temp;
+        clearchat(chatId: string): void {
+            const chat = this.chats[chatId];
+            if (chat) {
+                chat.messages = [];
+                chat.statistics = null;
             }
         },
 
-        clearConversation(conversationId: string): void {
-            const conversation = this.conversations[conversationId];
-            if (conversation) {
-                conversation.messages = [];
-                conversation.statistics = null;
-            }
-        },
-
-        getPromptTokensPerSecond(conversationId: string): string {
-            const conversation = this.conversations[conversationId];
-            if (conversation && conversation.statistics && conversation.statistics.prompt_eval_count) {
-                return (conversation.statistics.prompt_eval_count / (conversation.statistics.prompt_eval_duration / 1e9)).toFixed(2);
+        getPromptTokensPerSecond(chatId: string): string {
+            const chat = this.chats[chatId];
+            if (chat && chat.statistics && chat.statistics.prompt_eval_count) {
+                return (chat.statistics.prompt_eval_count / (chat.statistics.prompt_eval_duration / 1e9)).toFixed(2);
             }
             return "N/A";
         },
 
-        getInferenceTokensPerSecond(conversationId: string): string {
-            const conversation = this.conversations[conversationId];
-            if (conversation && conversation.statistics && conversation.statistics.eval_count) {
-                return (conversation.statistics.eval_count / (conversation.statistics.eval_duration / 1e9)).toFixed(2);
+        getInferenceTokensPerSecond(chatId: string): string {
+            const chat = this.chats[chatId];
+            if (chat && chat.statistics && chat.statistics.eval_count) {
+                return (chat.statistics.eval_count / (chat.statistics.eval_duration / 1e9)).toFixed(2);
             }
             return "N/A";
         },

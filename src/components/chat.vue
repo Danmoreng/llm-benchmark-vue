@@ -3,21 +3,22 @@
     <v-card-title>
       <v-row>
         <v-col>
-          {{ chatsStore.conversations[chatId].modelName }}
+          {{ chatsStore.chats[chatId].settings.model }}
         </v-col>
-        <v-col>
-          <v-btn density="compact" @click="chatsStore.resetChat(chatId)">Reset</v-btn>
+        <v-col class="d-flex align-content-center justify-space-between">
+          <v-btn density="compact" variant="tonal" color="warning" @click="editMode = !editMode">Edit</v-btn>
+          <v-btn density="compact" variant="tonal" color="error" @click="chatsStore.resetChat(chatId)">Reset</v-btn>
         </v-col>
       </v-row>
     </v-card-title>
     <v-card-subtitle>
-      Temperature: {{chat.temperature}} | {{ chatsStore.getInferenceTokensPerSecond(chatId) }} T/s
+      Temperature: {{chat.settings.temperature}} | {{ chatsStore.getInferenceTokensPerSecond(chatId) }} T/s
     </v-card-subtitle>
     <v-card-text>
       <v-row>
         <v-col v-if="chatId !== ''" style="max-width: 900px">
           <v-card
-              v-for="(message, index) in chatsStore.conversations[chatId].messages"
+              v-for="(message, index) in chatsStore.chats[chatId].messages"
               :key="index"
               :class="'role-' + message.role + ' mb-3'"
               variant="outlined"
@@ -41,15 +42,15 @@
             <tbody>
             <tr>
               <td>Evaluation Duration</td>
-              <td>{{ (chatsStore.conversations[chatId].statistics.eval_duration / 1e9).toFixed(3) }} seconds</td>
+              <td>{{ (chatsStore.chats[chatId].statistics.eval_duration / 1e9).toFixed(3) }} seconds</td>
             </tr>
             <tr>
               <td>Load Duration</td>
-              <td>{{ (chatsStore.conversations[chatId].statistics.load_duration / 1e9).toFixed(3) }} seconds</td>
+              <td>{{ (chatsStore.chats[chatId].statistics.load_duration / 1e9).toFixed(3) }} seconds</td>
             </tr>
             <tr>
               <td>Prompt Evaluation Duration</td>
-              <td>{{ (chatsStore.conversations[chatId].statistics.prompt_eval_duration / 1e9).toFixed(3) }} seconds</td>
+              <td>{{ (chatsStore.chats[chatId].statistics.prompt_eval_duration / 1e9).toFixed(3) }} seconds</td>
             </tr>
             <tr>
               <td>Prompt Tokens per Second</td>
@@ -57,7 +58,7 @@
             </tr>
             <tr>
               <td>Total Duration</td>
-              <td>{{ (chatsStore.conversations[chatId].statistics.total_duration / 1e9).toFixed(3) }} seconds</td>
+              <td>{{ (chatsStore.chats[chatId].statistics.total_duration / 1e9).toFixed(3) }} seconds</td>
             </tr>
             <tr>
               <td>Inference Tokens per Second</td>
@@ -82,7 +83,7 @@ const props = defineProps<{
   chatId: string
 }>();
 const chat = computed(() => {
-  return chatsStore.conversations[props.chatId];
+  return chatsStore.chats[props.chatId];
 })
 </script>
 

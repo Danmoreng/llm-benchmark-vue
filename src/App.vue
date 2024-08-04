@@ -4,7 +4,7 @@
       <v-app-bar
           class="px-3"
           density="compact"
-          title="LLM Benchmark"
+          title="LLM Playground"
           flat
       >
         <v-tabs
@@ -39,7 +39,7 @@
 import { ref } from 'vue';
 
 const items = ref([
-  { title: 'Home', route: '/' },
+  { title: 'Playground', route: '/' },
   { title: 'Models', route: '/models' }
 ]);
 </script>
