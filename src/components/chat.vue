@@ -1,14 +1,14 @@
 <template>
-  <v-card variant="flat" max-width="500">
+  <v-card variant="flat" class="chat">
     <v-card-title>
       <v-row>
         <v-col cols="4" style="overflow: hidden">
           {{ chatsStore.chats[chatId].settings.model }}
         </v-col>
-        <v-col cols="8" class="d-flex align-content-center justify-space-between">
-          <v-btn density="compact" variant="tonal" color="info" @click="editMode = !editMode">Edit</v-btn>
-          <v-btn density="compact" variant="tonal" color="warning" @click="chatsStore.resetChat(chatId)">Reset</v-btn>
-          <v-btn density="compact" variant="tonal" color="error" @click="chatsStore.deleteChat(chatId)">Delete</v-btn>
+        <v-col cols="8" class="d-flex justify-end align-center">
+          <v-btn density="compact" variant="text" color="info" @click="editMode = !editMode">Edit</v-btn>
+          <v-btn density="compact" variant="text" color="warning" @click="chatsStore.resetChat(chatId)">Reset</v-btn>
+          <v-btn density="compact" variant="text" color="error" @click="chatsStore.deleteChat(chatId)">Delete</v-btn>
         </v-col>
       </v-row>
     </v-card-title>
@@ -18,20 +18,16 @@
     <v-card-text>
       <v-row>
         <v-col v-if="chatId !== ''" style="max-width: 900px">
-          <v-card
-              v-for="(message, index) in chatsStore.chats[chatId].messages"
-              :key="index"
-              :class="'role-' + message.role + ' mb-3'"
-              variant="outlined"
-          >
-            <v-card-text v-if="!editMode">
-              <div v-html="marked(message.content)"></div>
-            </v-card-text>
-            <v-card-text v-else>
-              <v-textarea v-model="message.content" variant="outlined" auto-grow
-                          density="compact" :hide-details=true></v-textarea>
-            </v-card-text>
-          </v-card>
+          <ChatMessage
+            v-for="(message, index) in chatsStore.chats[chatId].messages"
+            :key="index"
+            :message="message"
+            :editMode="editMode"
+            :index="index"
+            :chatId="chatId"
+            @deleteMessage="deleteMessage"
+          />
+          <v-btn density="compact" variant="tonal" color="primary" @click="addMessage">Add Message</v-btn>
         </v-col>
         <v-col v-if="false">
           <v-table density="compact">
@@ -75,8 +71,8 @@
 
 <script setup lang="ts">
 import {computed, ref} from 'vue';
-import {marked} from 'marked';
 import {useChatStore} from "@/stores/chats";
+import ChatMessage from './ChatMessage.vue'; // Make sure the path is correct
 
 const chatsStore = useChatStore();
 const editMode = ref(false);
@@ -85,10 +81,22 @@ const props = defineProps<{
 }>();
 const chat = computed(() => {
   return chatsStore.chats[props.chatId];
-})
+});
+
+function deleteMessage(index: number) {
+  chatsStore.deleteMessage(props.chatId, index);
+}
+
+function addMessage() {
+  chatsStore.addMessage(props.chatId);
+}
 </script>
 
 <style>
+.chat {
+  min-width: 500px;
+  max-width: 900px;
+}
 pre {
   background: #3e3e3e;
   padding: 1rem;
@@ -101,16 +109,16 @@ code {
 }
 
 .role-system {
-  background: #9e7300;
+  background: #ba7100;
 }
 
 .role-assistant {
-  background: #271524;
+  background: #35002d;
   margin-right: 50px;
 }
 
 .role-user {
-  background: #12141e;
+  background: #303030;
   margin-left: 50px;
 }
 </style>

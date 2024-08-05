@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import ollama from 'ollama/browser';
-import type {Chat, ChatSettings} from "@/types/generic";
+import type {Chat, ChatSettings, Role} from "@/types/generic";
 import type {ChatResponse} from "ollama";
 
 interface ChatState {
@@ -13,7 +13,7 @@ export const useChatStore = defineStore('chat', {
     }),
 
     getters: {
-        getchatById: (state) => (id: string): Chat | null => state.chats[id] || null,
+        getChatById: (state) => (id: string): Chat | null => state.chats[id] || null,
     },
 
     actions: {
@@ -89,7 +89,7 @@ export const useChatStore = defineStore('chat', {
             }
         },
 
-        clearchat(chatId: string): void {
+        clearChat(chatId: string): void {
             const chat = this.chats[chatId];
             if (chat) {
                 chat.messages = [];
@@ -111,6 +111,20 @@ export const useChatStore = defineStore('chat', {
                 return (chat.statistics.eval_count / (chat.statistics.eval_duration / 1e9)).toFixed(2);
             }
             return "N/A";
+        },
+
+        deleteMessage(chatId: string, index: number): void {
+            const chat = this.chats[chatId];
+            if (chat) {
+                chat.messages.splice(index, 1);
+            }
+        },
+
+        addMessage(chatId: string, role: Role, content: string = ''): void {
+            const chat = this.chats[chatId];
+            if (chat) {
+                chat.messages.push({ role, content });
+            }
         },
     },
 });
