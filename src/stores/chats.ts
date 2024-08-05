@@ -28,7 +28,7 @@ export const useChatStore = defineStore('chat', {
             return id;
         },
 
-        removechat(id: string): void {
+        deleteChat(id: string): void {
             delete this.chats[id];
         },
 

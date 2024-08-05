@@ -2,12 +2,13 @@
   <v-card variant="flat" max-width="500">
     <v-card-title>
       <v-row>
-        <v-col>
+        <v-col cols="4" style="overflow: hidden">
           {{ chatsStore.chats[chatId].settings.model }}
         </v-col>
-        <v-col class="d-flex align-content-center justify-space-between">
-          <v-btn density="compact" variant="tonal" color="warning" @click="editMode = !editMode">Edit</v-btn>
-          <v-btn density="compact" variant="tonal" color="error" @click="chatsStore.resetChat(chatId)">Reset</v-btn>
+        <v-col cols="8" class="d-flex align-content-center justify-space-between">
+          <v-btn density="compact" variant="tonal" color="info" @click="editMode = !editMode">Edit</v-btn>
+          <v-btn density="compact" variant="tonal" color="warning" @click="chatsStore.resetChat(chatId)">Reset</v-btn>
+          <v-btn density="compact" variant="tonal" color="error" @click="chatsStore.deleteChat(chatId)">Delete</v-btn>
         </v-col>
       </v-row>
     </v-card-title>
