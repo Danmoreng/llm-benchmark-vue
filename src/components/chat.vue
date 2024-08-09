@@ -6,9 +6,15 @@
           {{ chatsStore.chats[chatId].settings.model }}
         </v-col>
         <v-col cols="8" class="d-flex justify-end align-center">
-          <v-btn density="compact" variant="text" color="info" @click="editMode = !editMode">Edit</v-btn>
-          <v-btn density="compact" variant="text" color="warning" @click="chatsStore.resetChat(chatId)">Reset</v-btn>
-          <v-btn density="compact" variant="text" color="error" @click="chatsStore.deleteChat(chatId)">Delete</v-btn>
+          <v-btn icon density="comfortable" color="info" class="me-1" @click="editMode = !editMode">
+            <v-icon>{{ editMode ? 'mdi-pencil-off' : 'mdi-pencil' }}</v-icon>
+          </v-btn>
+          <v-btn icon density="comfortable" color="warning" class="me-1" @click="chatsStore.resetChat(chatId)">
+            <v-icon>mdi-restore</v-icon>
+          </v-btn>
+          <v-btn icon density="comfortable" color="error" @click="chatsStore.deleteChat(chatId)">
+            <v-icon>mdi-delete</v-icon>
+          </v-btn>
         </v-col>
       </v-row>
     </v-card-title>
@@ -72,7 +78,7 @@
 <script setup lang="ts">
 import {computed, ref} from 'vue';
 import {useChatStore} from "@/stores/chats";
-import ChatMessage from './ChatMessage.vue'; // Make sure the path is correct
+import ChatMessage from './ChatMessage.vue';
 
 const chatsStore = useChatStore();
 const editMode = ref(false);
@@ -98,7 +104,7 @@ function addMessage() {
   max-width: calc(50vw - 40px);
 }
 pre {
-  background: #3e3e3e;
+  background: var(--pre-background);
   padding: 1rem;
   border-radius: 4px;
   margin: 10px 0 20px 0;
@@ -109,16 +115,20 @@ code {
 }
 
 .role-system {
-  background: #ba7100;
+  background: var(--role-system-background);
+  .v-card-text p {
+    letter-spacing: normal;
+    font-weight: bold !important;
+  }
 }
 
 .role-assistant {
-  background: #35002d;
+  background: var(--role-assistant-background);
   margin-right: 50px;
 }
 
 .role-user {
-  background: #303030;
+  background: var(--role-user-background);
   margin-left: 50px;
 }
 </style>

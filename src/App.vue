@@ -1,5 +1,5 @@
 <template>
-  <v-app>
+  <v-app :theme="currentTheme">
     <v-layout class="rounded rounded-md">
       <v-app-bar
           class="px-3"
@@ -22,10 +22,9 @@
         </v-tabs>
         <v-spacer></v-spacer>
 
-        <v-avatar
-            color="grey-darken-1"
-            size="32"
-        ></v-avatar>
+        <v-btn icon @click="toggleTheme">
+          <v-icon>{{ currentTheme === 'lightTheme' ? 'mdi-moon-waning-crescent' : 'mdi-white-balance-sunny' }}</v-icon>
+        </v-btn>
       </v-app-bar>
 
       <v-main>
@@ -42,9 +41,28 @@ const items = ref([
   { title: 'Playground', route: '/' },
   { title: 'Models', route: '/models' }
 ]);
+
+
+const currentTheme = ref('lightTheme');
+const toggleTheme = () => {
+  currentTheme.value = currentTheme.value === 'lightTheme' ? 'darkTheme' : 'lightTheme';
+};
 </script>
 
 <style>
+.v-theme--lightTheme {
+  --pre-background: #d8e2dc;
+  --role-system-background: #ffdd93;
+  --role-assistant-background: #eeffe7;
+  --role-user-background: #d9e8ff;
+}
+
+.v-theme--darkTheme {
+  --pre-background: #3e3e3e;
+  --role-system-background: #9a401c;
+  --role-assistant-background: #2a4025;
+  --role-user-background: #002e71;
+}
 .v-navigation-drawer {
   width: 250px;
 }

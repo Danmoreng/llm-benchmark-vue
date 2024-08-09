@@ -46,7 +46,7 @@ function openChatModal() {
 async function sendChat() {
   if (userMessage.value.trim() !== "") {
     const message = userMessage.value;
-    userMessage.value = ""; // Clear the input immediately
+    userMessage.value = "";
 
     const promises = Object.keys(chatsStore.chats).map(chatId =>
         chatsStore.sendMessage(chatId, message)

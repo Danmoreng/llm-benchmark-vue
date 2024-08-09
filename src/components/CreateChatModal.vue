@@ -1,7 +1,7 @@
 <template>
   <v-dialog v-model="dialog" persistent max-width="600px">
     <v-card>
-      <v-card-title class="headline">Create New Chat</v-card-title>
+      <v-card-title class="headline">New Chat</v-card-title>
       <v-card-text>
         <v-textarea
             label="System Prompt"
@@ -10,7 +10,7 @@
             density="compact"
         ></v-textarea>
         <v-row>
-          <v-col cols="6">
+          <v-col cols="8">
             <v-select
                 v-model="settings.model"
                 :items="modelStore.models"
@@ -30,27 +30,16 @@
               </template>
             </v-select>
           </v-col>
-
           <v-col cols="4">
-            <v-slider
-                v-model="settings.temperature"
-                label="Temperature"
-                min="0"
-                max="1"
-                step="0.01"
-                thumb-label
-            ></v-slider>
-          </v-col>
-          <v-col cols="2">
-            <v-text-field variant="outlined" v-model="settings.temperature" density="compact" type="number" step="0.01" min="0"
+            <v-text-field label="Temperature" variant="outlined" v-model="settings.temperature" density="compact" type="number" step="0.01" min="0"
                           max="1"></v-text-field>
           </v-col>
         </v-row>
       </v-card-text>
       <v-card-actions>
         <v-spacer></v-spacer>
-        <v-btn color="blue darken-1" text @click="close">Cancel</v-btn>
-        <v-btn color="blue darken-1" text @click="createChat">Create</v-btn>
+        <v-btn color="secondary" variant="flat" @click="close">Cancel</v-btn>
+        <v-btn color="primary" variant="flat" @click="createChat">Create</v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -67,7 +56,8 @@ const dialog = ref(false);
 const settings = ref<ChatSettings>({
   temperature: 0.7,
   model: '',
-  systemPrompt: 'You are a helpful chatbot. For testing purposes keep your answer very brief and concise. It must not be longer than three sentences.',
+  systemPrompt: 'You are a helpful chatbot. You have a tool available to execute javascript code in an sandboxed environment. Please use it to help better respond to the user.'
+  // 'You are a helpful chatbot. For testing purposes keep your answer very brief and concise. It must not be longer than three sentences.',
 })
 
 const modelStore = useModelStore();
