@@ -1,6 +1,6 @@
 <template>
   <main>
-    <v-container>
+    <v-container fluid>
       <v-row>
         <v-col>
           <v-btn color="primary" variant="tonal" @click="openChatModal">Create New Chat</v-btn>

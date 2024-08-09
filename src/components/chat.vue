@@ -2,7 +2,7 @@
   <v-card variant="flat" class="chat">
     <v-card-title>
       <v-row>
-        <v-col cols="4" style="overflow: hidden">
+        <v-col cols="4">
           {{ chatsStore.chats[chatId].settings.model }}
         </v-col>
         <v-col cols="8" class="d-flex justify-end align-center">
@@ -17,7 +17,7 @@
     </v-card-subtitle>
     <v-card-text>
       <v-row>
-        <v-col v-if="chatId !== ''" style="max-width: 900px">
+        <v-col v-if="chatId !== ''">
           <ChatMessage
             v-for="(message, index) in chatsStore.chats[chatId].messages"
             :key="index"
@@ -94,8 +94,8 @@ function addMessage() {
 
 <style>
 .chat {
-  min-width: 500px;
-  max-width: 900px;
+  min-width: calc(30vw - 20px);
+  max-width: calc(50vw - 40px);
 }
 pre {
   background: #3e3e3e;
