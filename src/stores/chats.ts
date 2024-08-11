@@ -1,8 +1,8 @@
-import { defineStore } from 'pinia';
+import {defineStore} from 'pinia';
 import ollama from 'ollama/browser';
-import type { Chat, ChatSettings, Role } from "@/types/generic";
-import type { ChatResponse } from "ollama";
-import { createSandboxedIframe, executeCodeInSandbox } from '@/sandbox';
+import type {Chat, ChatSettings, Role} from "@/types/generic";
+import type {ChatResponse} from "ollama";
+import {createSandboxedIframe, executeCodeInSandbox} from '@/sandbox';
 
 interface ChatState {
     chats: Record<string, Chat>;
@@ -23,7 +23,7 @@ export const useChatStore = defineStore('chat', {
             this.chats[id] = {
                 id,
                 settings,
-                messages: [{ role: "system", content: settings.systemPrompt }],
+                messages: [{role: "system", content: settings.systemPrompt}],
                 statistics: null,
             };
             return id;
@@ -34,7 +34,7 @@ export const useChatStore = defineStore('chat', {
         },
 
         resetChat(id: string): void {
-          this.chats[id].messages = [{ role: "system", content: this.chats[id].settings.systemPrompt }];
+            this.chats[id].messages = [{role: "system", content: this.chats[id].settings.systemPrompt}];
         },
 
         async sendMessage(chatId: string, message: string): Promise<void> {
@@ -84,7 +84,7 @@ export const useChatStore = defineStore('chat', {
             if (!chat) return;
 
             // Add the user message to the conversation history
-            chat.messages.push({ role: 'user', content: message });
+            chat.messages.push({role: 'user', content: message});
 
             const iframe = createSandboxedIframe();
 
@@ -125,86 +125,100 @@ export const useChatStore = defineStore('chat', {
                         total_duration: initialResponse.total_duration || 0,
                     };
 
-                    // Process function calls made by the model
-                    let attempts = 0;
-                    let success = false;
-                    let toolCallData = initialResponse.message.tool_calls ? initialResponse.message.tool_calls[0].function.arguments : null;
+                    // Check if the response contains a tool call
+                    if (initialResponse.message.tool_calls) {
+                        let attempts = 0;
+                        let success = false;
+                        let toolCallData = initialResponse.message.tool_calls[0].function.arguments;
 
-                    while (attempts < retries && toolCallData && !success) {
-                        attempts++;
-                        try {
-                            const { result, logs } = await executeCodeInSandbox(iframe, toolCallData.code);
-                            chat.messages.push({
-                                role: 'tool',
-                                content: JSON.stringify({ result, logs }),
-                            });
-                            success = true;
-
-                            // Send the updated conversation back to the model for a refined response
-                            const refinedResponse = await (ollama.chat as any)({
-                                model: chat.settings.model,
-                                messages: chat.messages,
-                                temperature: chat.settings.temperature,
-                            });
-
-                            if (refinedResponse) {
+                        while (attempts < retries && toolCallData && !success) {
+                            attempts++;
+                            try {
+                                const { result, logs } = await executeCodeInSandbox(iframe, toolCallData.code);
                                 chat.messages.push({
-                                    role: 'assistant',
-                                    content: refinedResponse.message.content,
+                                    role: 'tool',
+                                    content: JSON.stringify({ result, logs }),
+                                });
+                                success = true;
+
+                                // Send the updated conversation back to the model for a refined response
+                                const refinedResponse = await (ollama.chat as any)({
+                                    model: chat.settings.model,
+                                    messages: chat.messages,
+                                    temperature: chat.settings.temperature,
                                 });
 
-                                console.log('Refined response statistics:', refinedResponse);
-                                chat.statistics = {
-                                    eval_count: refinedResponse.eval_count || 0,
-                                    eval_duration: refinedResponse.eval_duration || 0,
-                                    load_duration: refinedResponse.load_duration || 0,
-                                    prompt_eval_count: refinedResponse.prompt_eval_count || 0,
-                                    prompt_eval_duration: refinedResponse.prompt_eval_duration || 0,
-                                    total_duration: refinedResponse.total_duration || 0,
-                                };
-                            }
-                        } catch (e: any) {
-                            chat.messages.push({
-                                role: 'tool',
-                                content: `Error executing code: ${e.message}`,
-                            });
+                                if (refinedResponse) {
+                                    chat.messages.push({
+                                        role: 'assistant',
+                                        content: refinedResponse.message.content,
+                                    });
 
-                            // Request LLM to refine the tool call
-                            const retryResponse = await (ollama.chat as any)({
-                                model: chat.settings.model,
-                                messages: chat.messages,
-                                temperature: chat.settings.temperature,
-                                tools: [
-                                    {
-                                        type: 'function',
-                                        function: {
-                                            name: 'execute_js_code',
-                                            description: 'Execute arbitrary JavaScript code',
-                                            parameters: {
-                                                type: 'object',
-                                                properties: {
-                                                    code: {
-                                                        type: 'string',
-                                                        description: 'The JavaScript code to execute',
+                                    console.log('Refined response statistics:', refinedResponse);
+                                    chat.statistics = {
+                                        eval_count: refinedResponse.eval_count || 0,
+                                        eval_duration: refinedResponse.eval_duration || 0,
+                                        load_duration: refinedResponse.load_duration || 0,
+                                        prompt_eval_count: refinedResponse.prompt_eval_count || 0,
+                                        prompt_eval_duration: refinedResponse.prompt_eval_duration || 0,
+                                        total_duration: refinedResponse.total_duration || 0,
+                                    };
+                                }
+                            } catch (e: any) {
+                                chat.messages.push({
+                                    role: 'tool',
+                                    content: `Error executing code: ${e.message}`,
+                                });
+
+                                // Request LLM to refine the tool call
+                                const retryResponse = await (ollama.chat as any)({
+                                    model: chat.settings.model,
+                                    messages: chat.messages,
+                                    temperature: chat.settings.temperature,
+                                    tools: [
+                                        {
+                                            type: 'function',
+                                            function: {
+                                                name: 'execute_js_code',
+                                                description: 'Execute arbitrary JavaScript code',
+                                                parameters: {
+                                                    type: 'object',
+                                                    properties: {
+                                                        code: {
+                                                            type: 'string',
+                                                            description: 'The JavaScript code to execute',
+                                                        },
                                                     },
+                                                    required: ['code'],
                                                 },
-                                                required: ['code'],
                                             },
                                         },
-                                    },
-                                ],
-                            });
+                                    ],
+                                });
 
-                            if (retryResponse.message.tool_calls) {
-                                toolCallData = retryResponse.message.tool_calls[0].function.arguments;
+                                if (retryResponse.message.tool_calls) {
+                                    toolCallData = retryResponse.message.tool_calls[0].function.arguments;
+                                } else {
+                                    chat.messages.push({
+                                        role: 'assistant',
+                                        content: retryResponse.message.content,
+                                    });
+                                    break;  // Exit the retry loop if a normal response is received
+                                }
                             }
                         }
-                    }
 
-                    if (!success) {
+                        if (!success) {
+                            chat.messages.push({
+                                role: 'assistant',
+                                content: 'The tool call could not be executed successfully after several attempts.',
+                            });
+                        }
+                    } else {
+                        // If there's no tool call, just handle the normal response
                         chat.messages.push({
                             role: 'assistant',
-                            content: 'The tool call could not be executed successfully after several attempts.',
+                            content: initialResponse.message.content,
                         });
                     }
                 }
@@ -218,10 +232,10 @@ export const useChatStore = defineStore('chat', {
         setSystemPrompt(chatId: string, prompt: string): void {
             const chat = this.chats[chatId];
             if (chat) {
-                if(chat.messages[0].role === 'system'){
+                if (chat.messages[0].role === 'system') {
                     chat.messages[0].content = prompt;
                 } else {
-                    chat.messages.unshift({ role: 'system', content: prompt });
+                    chat.messages.unshift({role: 'system', content: prompt});
                 }
             }
         },
@@ -260,7 +274,7 @@ export const useChatStore = defineStore('chat', {
         addMessage(chatId: string, role: Role, content: string = ''): void {
             const chat = this.chats[chatId];
             if (chat) {
-                chat.messages.push({ role, content });
+                chat.messages.push({role, content});
             }
         },
     },

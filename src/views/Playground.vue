@@ -18,6 +18,7 @@
               v-model="userMessage"
               variant="outlined"
               density="compact"
+              @keydown.enter="sendChat"
           ></v-textarea>
         </v-col>
         <v-col cols="2">
@@ -49,7 +50,7 @@ async function sendChat() {
     userMessage.value = "";
 
     const promises = Object.keys(chatsStore.chats).map(chatId =>
-        chatsStore.sendMessage(chatId, message)
+        chatsStore.sendMessage( chatId, message)
     );
 
     await Promise.all(promises);

@@ -59,9 +59,9 @@ const toggleTheme = () => {
 
 .v-theme--darkTheme {
   --pre-background: #3e3e3e;
-  --role-system-background: #9a401c;
-  --role-assistant-background: #2a4025;
-  --role-user-background: #002e71;
+  --role-system-background: #494234;
+  --role-assistant-background: #282e27;
+  --role-user-background: #222831;
 }
 .v-navigation-drawer {
   width: 250px;

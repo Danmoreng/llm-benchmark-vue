@@ -112,6 +112,7 @@ pre {
 
 code {
   font-family: 'Courier New', Courier, monospace;
+  white-space: break-spaces;
 }
 
 .role-system {
