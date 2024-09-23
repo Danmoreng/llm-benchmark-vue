@@ -56,7 +56,8 @@ const dialog = ref(false);
 const settings = ref<ChatSettings>({
   temperature: 0.7,
   model: '',
-  systemPrompt: 'You are a helpful chatbot. You have a tool available to execute javascript code in an sandboxed environment. Please use it to help better respond to the user.'
+  systemPrompt: 'You are a helpful chatbot.'
+  //'You have a tool available to execute javascript code in an sandboxed environment. Please use it to help better respond to the user.'
   // 'You are a helpful chatbot. For testing purposes keep your answer very brief and concise. It must not be longer than three sentences.',
 })
 

@@ -26,3 +26,9 @@ export interface Chat {
     messages: Message[];
     statistics: ResponseStatistics | null;
 }
+
+export interface IframeContent {
+    html: string;
+    css: string;
+    js: string;
+}

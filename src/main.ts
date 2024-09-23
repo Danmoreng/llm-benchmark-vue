@@ -3,8 +3,6 @@ import { createPinia } from 'pinia';
 import '@mdi/font/css/materialdesignicons.css'
 import 'vuetify/styles';
 import { createVuetify, type ThemeDefinition } from 'vuetify'
-import * as components from 'vuetify/components';
-import * as directives from 'vuetify/directives';
 
 import App from './App.vue';
 import router from './router';
@@ -51,8 +49,6 @@ const lightTheme = {
 
 const app = createApp(App);
 const vuetify = createVuetify({
-    components,
-    directives,
     theme: {
         defaultTheme: 'lightTheme',
         themes: {

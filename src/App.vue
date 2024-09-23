@@ -39,6 +39,7 @@ import { ref } from 'vue';
 
 const items = ref([
   { title: 'Playground', route: '/' },
+  { title: 'Code Playground', route: '/code' },
   { title: 'Models', route: '/models' }
 ]);
 
