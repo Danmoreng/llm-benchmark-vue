@@ -1,9 +1,11 @@
 import {defineStore} from 'pinia';
 import ollama from 'ollama/browser';
-import type {Chat, ChatSettings, Role, IframeContent} from "@/types/generic";
+import type {Chat, ChatSettings, IframeContent, Role} from "@/types/generic";
 import type {ChatResponse} from "ollama";
 import {createSandboxedIframe, executeCodeInSandbox} from '@/sandbox';
 import {useIframeStore} from '@/stores/iframeStore';
+import {tools} from "@/utils/tools";
+import {useSettingsStore} from "@/stores/settingsStore";
 
 interface ChatState {
     chats: Record<string, Chat>;
@@ -80,6 +82,7 @@ export const useChatStore = defineStore('chat', {
             }
         },
 
+        /** DEPRECATED
         async handleIframeTool(chatId: string, message: string, retries: number = 3): Promise<void> {
             const chat = this.chats[chatId];
             if (!chat) return;
@@ -147,274 +150,125 @@ export const useChatStore = defineStore('chat', {
                         let success = false;
                         let toolCallData: IframeContent | any = initialResponse.message.tool_calls[0].function.arguments;
 
-while (attempts < retries && toolCallData && !success) {
-    attempts++;
-
-    // Handle reasoning steps
-    if (initialResponse.message.tool_calls[0].function.name === 'reasoning_step') {
-        // This is an intermediate reasoning step
-        chat.messages.push({
-            role: 'tool',
-            content: `Reasoning: ${toolCallData.clarification}`,
-        });
-
-        // Request further reasoning or refinement
-        const refinedResponse = await ollama.chat({
-            model: chat.settings.model,
-            messages: chat.messages,
-            temperature: chat.settings.temperature,
-        });
-
-        // Check if refined response contains a tool call, if not exit reasoning loop
-        if (refinedResponse && refinedResponse.message.tool_calls) {
-            toolCallData = refinedResponse.message.tool_calls[0].function.arguments;
-            continue; // Keep looping for further reasoning steps if necessary
-        } else {
-            // Normal message received, break the loop
-            chat.messages.push({
-                role: 'assistant',
-                content: refinedResponse.message.content,
-            });
-            break;
-        }
-    }
-
-    // Handle iframe update tool call
-    if (initialResponse.message.tool_calls[0].function.name === 'update_iframe_code') {
-        try {
-            // Final step: update the iframe content
-            iframeStore.updateIframeContent(toolCallData);
-            chat.messages.push({
-                role: 'assistant',
-                content: JSON.stringify(toolCallData),
-            });
-            chat.messages.push({
-                role: 'tool',
-                content: JSON.stringify({ result: 'Iframe content updated successfully.' }),
-            });
-            success = true;
-
-            // Send the updated conversation back to the model for a refined response
-            const finalResponse = await ollama.chat({
-                model: chat.settings.model,
-                messages: chat.messages,
-                temperature: chat.settings.temperature,
-            });
-
-            if (finalResponse) {
-                chat.messages.push({
-                    role: 'assistant',
-                    content: finalResponse.message.content,
-                });
-
-                console.log('Final response statistics:', finalResponse);
-                chat.statistics = {
-                    eval_count: finalResponse.eval_count || 0,
-                    eval_duration: finalResponse.eval_duration || 0,
-                    load_duration: finalResponse.load_duration || 0,
-                    prompt_eval_count: finalResponse.prompt_eval_count || 0,
-                    prompt_eval_duration: finalResponse.prompt_eval_duration || 0,
-                    total_duration: finalResponse.total_duration || 0,
-                };
-            }
-        } catch (e: any) {
-            chat.messages.push({
-                role: 'tool',
-                content: `Error updating iframe content: ${e.message}`,
-            });
-
-            // Request LLM to refine the tool call
-            const retryResponse = await ollama.chat({
-                model: chat.settings.model,
-                messages: chat.messages,
-                temperature: chat.settings.temperature,
-                tools: [
-                    {
-                        type: 'function',
-                        function: {
-                            name: 'update_iframe_code',
-                            description: 'Update the content of an iframe with provided HTML, CSS, and JavaScript.',
-                            parameters: {
-                                type: 'object',
-                                properties: {
-                                    html: {
-                                        type: 'string',
-                                        description: 'The HTML content to update the iframe.'
-                                    },
-                                    css: {
-                                        type: 'string',
-                                        description: 'The CSS content to style the iframe.'
-                                    },
-                                    js: {
-                                        type: 'string',
-                                        description: 'The JavaScript to run inside the iframe.'
-                                    },
-                                },
-                                required: ['html', 'css', 'js'],
-                            },
-                        },
-                    },
-                ],
-            });
-
-            if (retryResponse.message.tool_calls) {
-                toolCallData = retryResponse.message.tool_calls[0].function.arguments as IframeContent;
-            } else {
-                chat.messages.push({
-                    role: 'assistant',
-                    content: retryResponse.message.content,
-                });
-                break;  // Exit the retry loop if a normal response is received
-            }
-        }
-    }
-}
-
-if (!success) {
-    chat.messages.push({
-        role: 'assistant',
-        content: 'The tool call could not be executed successfully after several attempts.',
-    });
-}
-                    } else {
-                        // If there's no tool call, just handle the normal response
-                        chat.messages.push({
-                            role: 'assistant',
-                            content: initialResponse.message.content,
-                        });
-                    }
-                }
-            } catch (error) {
-                console.error('Error handling tool calls:', error);
-            }
-        },
-
-
-        async handleToolCalls(chatId: string, message: string, retries: number = 3): Promise<void> {
-            const chat = this.chats[chatId];
-            if (!chat) return;
-
-            // Add the user message to the conversation history
-            chat.messages.push({role: 'user', content: message});
-
-            const iframe = createSandboxedIframe();
-
-            try {
-                const initialResponse = await (ollama.chat as any)({
-                    model: chat.settings.model,
-                    messages: chat.messages,
-                    temperature: chat.settings.temperature,
-                    tools: [
-                        {
-                            type: 'function',
-                            function: {
-                                name: 'execute_js_code',
-                                description: 'Execute arbitrary JavaScript code',
-                                parameters: {
-                                    type: 'object',
-                                    properties: {
-                                        code: {
-                                            type: 'string',
-                                            description: 'The JavaScript code to execute',
-                                        },
-                                    },
-                                    required: ['code'],
-                                },
-                            },
-                        },
-                    ],
-                });
-
-                if (initialResponse) {
-                    console.log('Initial response statistics:', initialResponse);
-                    chat.statistics = {
-                        eval_count: initialResponse.eval_count || 0,
-                        eval_duration: initialResponse.eval_duration || 0,
-                        load_duration: initialResponse.load_duration || 0,
-                        prompt_eval_count: initialResponse.prompt_eval_count || 0,
-                        prompt_eval_duration: initialResponse.prompt_eval_duration || 0,
-                        total_duration: initialResponse.total_duration || 0,
-                    };
-
-                    // Check if the response contains a tool call
-                    if (initialResponse.message.tool_calls) {
-                        let attempts = 0;
-                        let success = false;
-                        let toolCallData = initialResponse.message.tool_calls[0].function.arguments;
-
                         while (attempts < retries && toolCallData && !success) {
                             attempts++;
-                            try {
-                                const {result, logs} = await executeCodeInSandbox(iframe, toolCallData.code);
+
+                            // Handle reasoning steps
+                            if (initialResponse.message.tool_calls[0].function.name === 'reasoning_step') {
+                                // This is an intermediate reasoning step
                                 chat.messages.push({
                                     role: 'tool',
-                                    content: JSON.stringify({result, logs}),
+                                    content: `Reasoning: ${toolCallData.clarification}`,
                                 });
-                                success = true;
 
-                                // Send the updated conversation back to the model for a refined response
-                                const refinedResponse = await (ollama.chat as any)({
+                                // Request further reasoning or refinement
+                                const refinedResponse = await ollama.chat({
                                     model: chat.settings.model,
                                     messages: chat.messages,
                                     temperature: chat.settings.temperature,
                                 });
 
-                                if (refinedResponse) {
+                                // Check if refined response contains a tool call, if not exit reasoning loop
+                                if (refinedResponse && refinedResponse.message.tool_calls) {
+                                    toolCallData = refinedResponse.message.tool_calls[0].function.arguments;
+                                    continue; // Keep looping for further reasoning steps if necessary
+                                } else {
+                                    // Normal message received, break the loop
                                     chat.messages.push({
                                         role: 'assistant',
                                         content: refinedResponse.message.content,
                                     });
-
-                                    console.log('Refined response statistics:', refinedResponse);
-                                    chat.statistics = {
-                                        eval_count: refinedResponse.eval_count || 0,
-                                        eval_duration: refinedResponse.eval_duration || 0,
-                                        load_duration: refinedResponse.load_duration || 0,
-                                        prompt_eval_count: refinedResponse.prompt_eval_count || 0,
-                                        prompt_eval_duration: refinedResponse.prompt_eval_duration || 0,
-                                        total_duration: refinedResponse.total_duration || 0,
-                                    };
+                                    break;
                                 }
-                            } catch (e: any) {
-                                chat.messages.push({
-                                    role: 'tool',
-                                    content: `Error executing code: ${e.message}`,
-                                });
+                            }
 
-                                // Request LLM to refine the tool call
-                                const retryResponse = await (ollama.chat as any)({
-                                    model: chat.settings.model,
-                                    messages: chat.messages,
-                                    temperature: chat.settings.temperature,
-                                    tools: [
-                                        {
-                                            type: 'function',
-                                            function: {
-                                                name: 'execute_js_code',
-                                                description: 'Execute arbitrary JavaScript code',
-                                                parameters: {
-                                                    type: 'object',
-                                                    properties: {
-                                                        code: {
-                                                            type: 'string',
-                                                            description: 'The JavaScript code to execute',
-                                                        },
-                                                    },
-                                                    required: ['code'],
-                                                },
-                                            },
-                                        },
-                                    ],
-                                });
-
-                                if (retryResponse.message.tool_calls) {
-                                    toolCallData = retryResponse.message.tool_calls[0].function.arguments;
-                                } else {
+                            // Handle iframe update tool call
+                            if (initialResponse.message.tool_calls[0].function.name === 'update_iframe_code') {
+                                try {
+                                    // Final step: update the iframe content
+                                    iframeStore.updateIframeContent(toolCallData);
                                     chat.messages.push({
                                         role: 'assistant',
-                                        content: retryResponse.message.content,
+                                        content: JSON.stringify(toolCallData),
                                     });
-                                    break;  // Exit the retry loop if a normal response is received
+                                    chat.messages.push({
+                                        role: 'tool',
+                                        content: JSON.stringify({result: 'Iframe content updated successfully.'}),
+                                    });
+                                    success = true;
+
+                                    // Send the updated conversation back to the model for a refined response
+                                    const finalResponse = await ollama.chat({
+                                        model: chat.settings.model,
+                                        messages: chat.messages,
+                                        temperature: chat.settings.temperature,
+                                    });
+
+                                    if (finalResponse) {
+                                        chat.messages.push({
+                                            role: 'assistant',
+                                            content: finalResponse.message.content,
+                                        });
+
+                                        console.log('Final response statistics:', finalResponse);
+                                        chat.statistics = {
+                                            eval_count: finalResponse.eval_count || 0,
+                                            eval_duration: finalResponse.eval_duration || 0,
+                                            load_duration: finalResponse.load_duration || 0,
+                                            prompt_eval_count: finalResponse.prompt_eval_count || 0,
+                                            prompt_eval_duration: finalResponse.prompt_eval_duration || 0,
+                                            total_duration: finalResponse.total_duration || 0,
+                                        };
+                                    }
+                                } catch (e: any) {
+                                    chat.messages.push({
+                                        role: 'tool',
+                                        content: `Error updating iframe content: ${e.message}`,
+                                    });
+
+                                    // Request LLM to refine the tool call
+                                    const retryResponse = await ollama.chat({
+                                        model: chat.settings.model,
+                                        messages: chat.messages,
+                                        temperature: chat.settings.temperature,
+                                        tools: [
+                                            {
+                                                type: 'function',
+                                                function: {
+                                                    name: 'update_iframe_code',
+                                                    description: 'Update the content of an iframe with provided HTML, CSS, and JavaScript.',
+                                                    parameters: {
+                                                        type: 'object',
+                                                        properties: {
+                                                            html: {
+                                                                type: 'string',
+                                                                description: 'The HTML content to update the iframe.'
+                                                            },
+                                                            css: {
+                                                                type: 'string',
+                                                                description: 'The CSS content to style the iframe.'
+                                                            },
+                                                            js: {
+                                                                type: 'string',
+                                                                description: 'The JavaScript to run inside the iframe.'
+                                                            },
+                                                        },
+                                                        required: ['html', 'css', 'js'],
+                                                    },
+                                                },
+                                            },
+                                        ],
+                                    });
+
+                                    if (retryResponse.message.tool_calls) {
+                                        toolCallData = retryResponse.message.tool_calls[0].function.arguments as IframeContent;
+                                    } else {
+                                        chat.messages.push({
+                                            role: 'assistant',
+                                            content: retryResponse.message.content,
+                                        });
+                                        break;  // Exit the retry loop if a normal response is received
+                                    }
                                 }
                             }
                         }
@@ -435,8 +289,132 @@ if (!success) {
                 }
             } catch (error) {
                 console.error('Error handling tool calls:', error);
-            } finally {
-                document.body.removeChild(iframe);
+            }
+        },
+        */
+
+        async sendChatMessage(chatId: string, message: string): Promise<void> {
+            const chat: Chat = this.chats[chatId];
+            if (!chat) return;
+            const settingsStore = useSettingsStore();
+
+            chat.messages.push({ role: 'user', content: message });
+
+            const selectedTools = settingsStore.activeTools.map(name => tools[name]?.definition).filter(Boolean);
+
+            try {
+                const initialResponse = await ollama.chat({
+                    model: chat.settings.model,
+                    messages: chat.messages,
+                    temperature: chat.settings.temperature,
+                    tools: selectedTools,
+                });
+
+                if (initialResponse) {
+                    console.log('Initial response statistics:', initialResponse);
+                    chat.statistics = {
+                        eval_count: initialResponse.eval_count || 0,
+                        eval_duration: initialResponse.eval_duration || 0,
+                        load_duration: initialResponse.load_duration || 0,
+                        prompt_eval_count: initialResponse.prompt_eval_count || 0,
+                        prompt_eval_duration: initialResponse.prompt_eval_duration || 0,
+                        total_duration: initialResponse.total_duration || 0,
+                    };
+
+                    await this.processLLMResponse(initialResponse, chatId, settingsStore);
+                }
+            } catch (error) {
+                console.error('Error sending chat message:', error);
+                chat.messages.push({
+                    role: 'assistant',
+                    content: 'An error occurred while processing your request.',
+                });
+            }
+        },
+
+        async processLLMResponse(response: any, chatId: string, settingsStore: any): Promise<void> {
+            const chat = this.chats[chatId];
+            if (!chat) return;
+
+            const iframeStore = useIframeStore();
+            let attempts = 0;
+            let success = false;
+
+            while (attempts < settingsStore.retries) {
+                attempts++;
+
+                if (response.message.tool_calls) {
+                    const toolCall: any = response.message.tool_calls[0];
+                    const toolName = toolCall.function.name;
+                    const toolHandler = tools[toolName]?.handler;
+
+                    if (toolHandler) {
+                        const result = await toolHandler(toolCall.function.arguments, iframeStore, chat);
+
+                        if (result.nextStep === 'reasoning') {
+                            response = await ollama.chat({
+                                model: chat.settings.model,
+                                messages: chat.messages,
+                                temperature: chat.settings.temperature,
+                                tools: settingsStore.activeTools.map(name => tools[name]?.definition).filter(Boolean),
+                            });
+                        } else if (result.nextStep === 'success') {
+                            success = true;
+
+                            const finalResponse = await ollama.chat({
+                                model: chat.settings.model,
+                                messages: chat.messages,
+                                temperature: chat.settings.temperature,
+                            });
+
+                            if (finalResponse) {
+                                if (finalResponse.message.tool_calls) {
+                                    response = finalResponse;
+                                } else {
+                                    chat.messages.push({
+                                        role: 'assistant',
+                                        content: finalResponse.message.content,
+                                    });
+                                    break;
+                                }
+                            }
+                        } else if (result.nextStep === 'failure') {
+                            if (attempts >= settingsStore.retries) {
+                                chat.messages.push({
+                                    role: 'assistant',
+                                    content: 'The tool call could not be executed successfully after several attempts.',
+                                });
+                                break;
+                            } else {
+                                response = await ollama.chat({
+                                    model: chat.settings.model,
+                                    messages: chat.messages,
+                                    temperature: chat.settings.temperature,
+                                    tools: settingsStore.activeTools.map(name => tools[name]?.definition).filter(Boolean),
+                                });
+                            }
+                        }
+                    } else {
+                        chat.messages.push({
+                            role: 'assistant',
+                            content: 'Unknown tool call received.',
+                        });
+                        break;
+                    }
+                } else {
+                    chat.messages.push({
+                        role: 'assistant',
+                        content: response.message.content,
+                    });
+                    break;
+                }
+            }
+
+            if (!success && attempts >= settingsStore.retries) {
+                chat.messages.push({
+                    role: 'assistant',
+                    content: 'The tool call could not be executed successfully after several attempts.',
+                });
             }
         },
 

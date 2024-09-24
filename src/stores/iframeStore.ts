@@ -1,5 +1,5 @@
 // stores/iframeStore.ts
-import {defineStore} from 'pinia';
+import { defineStore } from 'pinia';
 
 interface IframeContent {
     html: string;
@@ -28,45 +28,73 @@ export const useIframeStore = defineStore('iframe', {
         getCurrentContent(state): IframeContent {
             return state.versions[state.currentVersion];
         },
+
         getVersionCount(state): number {
             return state.versions.length;
         },
 
-    // Fix the newlines in HTML, CSS, and JS content
-    getIframeContent(state): string {
-      const currentContent = state.versions[state.currentVersion];
+        // Prepare the full iframe content as a single string (HTML, CSS, and JS combined)
+        getIframeContent(state): string {
+            const currentContent = state.versions[state.currentVersion];
 
-      // Ensure that newlines in content don't cause rendering issues
-      const html = currentContent.html.replace(/\n/g, '').trim();
-      const css = currentContent.css.replace(/\n/g, '').trim();
-      const js = currentContent.js.replace(/\n/g, '').trim();
+            // Ensure newlines in content don't cause rendering issues
+            const html = currentContent.html.replace(/\n/g, '').trim();
+            const css = currentContent.css.replace(/\n/g, '').trim();
+            const js = currentContent.js.replace(/\n/g, '').trim();
 
-      return `
-        <html>
-          <head>
-            <style>${css}</style>
-          </head>
-          <body>
-            ${html}
-            <script>${js}<\/script>
-          </body>
-        </html>
-      `;
+            return `
+                <html>
+                    <head>
+                        <style>${css}</style>
+                    </head>
+                    <body>
+                        ${html}
+                        <script>${js}<\/script>
+                    </body>
+                </html>
+            `;
+        },
     },
-  },
 
     actions: {
+        // Update the iframe content with a new set of HTML, CSS, and JS
         updateIframeContent(newContent: IframeContent) {
             this.versions.push(newContent);
             this.currentVersion = this.versions.length - 1;
         },
 
+        // Update only the HTML of the iframe, keeping other content intact
+        updateIframeHtml(newHtml: string) {
+            const current = { ...this.$state.versions[this.$state.currentVersion] }; // Access state directly
+            current.html = newHtml;
+            this.versions.push(current);
+            this.currentVersion = this.versions.length - 1;
+        },
+
+        // Update only the CSS of the iframe, keeping other content intact
+        updateIframeCss(newCss: string) {
+            const current = { ...this.$state.versions[this.$state.currentVersion] }; // Access state directly
+            current.css = newCss;
+            this.versions.push(current);
+            this.currentVersion = this.versions.length - 1;
+        },
+
+        // Update only the JavaScript of the iframe, keeping other content intact
+        updateIframeJs(newJs: string) {
+            const current = { ...this.$state.versions[this.$state.currentVersion] }; // Access state directly
+            current.js = newJs;
+            this.versions.push(current);
+            this.currentVersion = this.versions.length - 1;
+        },
+
+        // Switch to a specific version of the iframe content
         switchVersion(versionIndex: number) {
             if (versionIndex >= 0 && versionIndex < this.versions.length) {
                 this.currentVersion = versionIndex;
             }
         },
 
+        // Reset the iframe content to the initial state
         resetIframeContent() {
             this.versions = [
                 {
