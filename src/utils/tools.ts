@@ -186,7 +186,7 @@ export const tools: Record<string, { definition: ToolDefinition; handler: (toolC
                 });
                 chat.messages.push({
                     role: 'assistant',
-                    content: `Updated HTML, CSS, and JavaScript in the iframe.`,
+                    content: `Updated HTML, CSS, and JavaScript in the iframe:${JSON.stringify(toolCallData)}`,
                 });
                 return {
                     nextStep: 'success',

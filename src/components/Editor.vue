@@ -1,9 +1,8 @@
 <template>
-  <v-container fluid>
-    <v-row>
+  <v-container fluid class="editor-container">
+    <v-row class="editor-row">
       <!-- Left Column: Chat and Model Selector -->
-      <v-col cols="6">
-
+      <v-col cols="6" class="editor-col">
         <!-- Model Selector -->
         <v-select
           v-model="selectedModel"
@@ -25,11 +24,11 @@
         </v-select>
 
         <!-- Show Chat if Initialized -->
-        <div v-if="!selectedModel" class="chat-area">
+        <div v-if="!selectedModel" class="chat-area no-chat">
           <p>Please select a model to start the chat.</p>
         </div>
-        <div v-else>
-          <Chat :chatId="chatId"/>
+        <div v-else class="chat-area">
+          <Chat :chatId="chatId" />
         </div>
 
         <!-- Message Input -->
@@ -53,14 +52,12 @@
       </v-col>
 
       <!-- Right Column: Iframe Preview and Version Control -->
-      <v-col cols="6">
-        <h3>Code Output</h3>
+      <v-col cols="6" class="editor-col">
         <iframe class="code-preview" :srcdoc="iframeContent"/>
 
         <!-- Versioning Controls -->
         <div class="version-controls mt-3">
-          <h4>Versions</h4>
-          <v-btn v-for="version in iframeStore.getVersionCount" :key="version" @click="switchVersion(version)">
+          <v-btn variant="text" size="compact" v-for="version in iframeStore.getVersionCount" :key="version" @click="switchVersion(version)">
             Version {{ version + 1 }}
           </v-btn>
         </div>
@@ -122,10 +119,6 @@ Your primary goal is to assist the user by directly updating the iframe and then
   }
 });
 
-
-
-
-
 // Send a chat message to the LLM and handle tool calls
 async function sendChat() {
   if (!userMessage.value.trim()) return;
@@ -144,22 +137,44 @@ function switchVersion(version: number) {
 </script>
 
 <style scoped>
+.editor-container {
+  height: 100%; /* Take up the available height */
+}
+
+.editor-row {
+  height: 100%;
+}
+
+.editor-col {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
 .chat-area {
-  max-height: 500px;
+  flex-grow: 1;
   overflow-y: auto;
   border: 1px solid #ccc;
   padding: 10px;
   background-color: #f9f9f9;
 }
 
+.no-chat {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
 .code-preview {
   width: 100%;
-  height: 500px;
+  height: 100%;
   border: 1px solid #ccc;
 }
 
 .version-controls {
   display: flex;
   gap: 10px;
+  margin-top: 10px;
 }
 </style>

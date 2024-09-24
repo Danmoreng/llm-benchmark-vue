@@ -35,7 +35,6 @@ import Chat from "@/components/chat.vue";
 import { useChatStore } from "@/stores/chats";
 import { ref } from "vue";
 import CreateChatModal from "@/components/CreateChatModal.vue";
-import CardComponent from "@/components/CardComponent.vue";
 
 const chatsStore = useChatStore();
 const userMessage = ref("Why is the sky blue?");
